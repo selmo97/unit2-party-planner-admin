@@ -1,3 +1,16 @@
+/*
+  step 1: add the form ui via js
+  step 2: build AddPartyForm() component
+  step 3: add delete button to SelectedParty()
+
+  side note: $ in variable names is a visual cue to make code more readable
+             and to indicate that the element is a DOM element.
+
+             keeps logic and UI variables separated!
+  another side note: Pascal Casing for functions to mimic React componenet based approach
+*/
+
+
 // === Constants ===
 const BASE = "https://fsa-crud-2aa9294fe819.herokuapp.com/api/2503-ftb-et-web-pt/";
 const COHORT = ""; // Make sure to change this!
@@ -102,8 +115,21 @@ function SelectedParty() {
     <address>${selectedParty.location}</address>
     <p>${selectedParty.description}</p>
     <GuestList></GuestList>
+    <button id="deleteBtn">Delete party</button>
   `;
   $party.querySelector("GuestList").replaceWith(GuestList());
+  //DELETE API call
+  $party.querySelector("#deleteBtn").addEventListener("click", async () => {
+  try {
+    await fetch(API + "/events/" + selectedParty.id, {
+      method: "DELETE"
+    });
+    selectedParty = null;
+    await getParties();
+  } catch (e) {
+    console.error("Failed to delete party:", e);
+  }
+});
 
   return $party;
 }
@@ -128,6 +154,44 @@ function GuestList() {
   return $ul;
 }
 
+function AddPartyForm() {
+  const $form = document.createElement("form");
+
+  $form.innerHTML = `
+    <input name="name" placeholder="Name" required />
+    <input name="description" placeholder="Description" required />
+    <input name="date" type="date" required />
+    <input name="location" placeholder="Location" required />
+    <button>Add party</button>
+  `;
+
+  $form.addEventListener("submit", async (event) => {
+    event.preventDefault(); //prevents the page from refressing
+    const formData = new FormData($form);
+
+    const newParty = {
+      name: formData.get("name"),
+      description: formData.get("description"),
+      date: new Date(formData.get("date")).toISOString(),
+      location: formData.get("location")
+    };
+
+    try {
+      const response = await fetch(API + "/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newParty)
+      });
+      const result = await response.json();
+      await getParties(); // Refresh list
+    } catch (e) {
+      console.error("Failed to add party:", e);
+    }
+  });
+
+  return $form;
+}
+
 // === Render ===
 function render() {
   const $app = document.querySelector("#app");
@@ -138,6 +202,13 @@ function render() {
         <h2>Upcoming Parties</h2>
         <PartyList></PartyList>
       </section>
+
+                <!-- adding form ui -->
+      <section> 
+        <h2>Add a new party</h2> 
+        <AddPartyForm></AddPartyForm>
+      </section> 
+
       <section id="selected">
         <h2>Party Details</h2>
         <SelectedParty></SelectedParty>
@@ -147,6 +218,7 @@ function render() {
 
   $app.querySelector("PartyList").replaceWith(PartyList());
   $app.querySelector("SelectedParty").replaceWith(SelectedParty());
+  $app.querySelector("AddPartyForm").replaceWith(AddPartyForm()); //selecting the AddPartyForm and replacing entire element with the AddPartForm() function
 }
 
 async function init() {
